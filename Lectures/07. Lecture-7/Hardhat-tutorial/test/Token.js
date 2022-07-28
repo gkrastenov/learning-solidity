@@ -1,119 +1,53 @@
-// This is an example test file. Hardhat will run every *.js file in `test/`,
-// so feel free to add new ones.
-
-// Hardhat tests are normally written with Mocha and Chai.
-
-// We import Chai to use its asserting functions here.
 const { expect } = require("chai");
-
-// We use `loadFixture` to share common setups (or fixtures) between tests.
-// Using this simplifies your tests and makes them run faster, by taking
-// advantage of Hardhat Network's snapshot functionality.
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 
-// `describe` is a Mocha function that allows you to organize your tests.
-// Having your tests organized makes debugging them easier. All Mocha
-// functions are available in the global scope.
-//
-// `describe` receives the name of a section of your test suite, and a
-// callback. The callback must define the tests of that section. This callback
-// can't be an async function.
-describe("Token contract", function () {
-  // We define a fixture to reuse the same setup in every test. We use
-  // loadFixture to run this setup once, snapshot that state, and reset Hardhat
-  // Network to that snapshopt in every test.
-  async function deployTokenFixture() {
-    // Get the ContractFactory and Signers here.
-    const Token = await ethers.getContractFactory("Token");
-    const [owner, addr1, addr2] = await ethers.getSigners();
 
-    // To deploy our contract, we just have to call Token.deploy() and await
-    // its deployed() method, which happens onces its transaction has been
-    // mined.
-    const hardhatToken = await Token.deploy();
+describe('Counter contract', function () { 
+  async function deployCounterFixture() {
 
-    await hardhatToken.deployed();
+  const Counter = await ethers.getContractFactory("Counter");
+  const [owner, otherAddr] = await ethers.getSigners();
 
-    // Fixtures can return anything you consider useful for your tests
-    return { Token, hardhatToken, owner, addr1, addr2 };
-  }
+  const hardhatCounter = await Counter.deploy();
+  await hardhatCounter.deployed();
 
-  // You can nest describe calls to create subsections.
-  describe("Deployment", function () {
-    // `it` is another Mocha function. This is the one you use to define each
-    // of your tests. It receives the test name, and a callback function.
-    //
-    // If the callback function is async, Mocha will `await` it.
-    it("Should set the right owner", async function () {
-      // We use loadFixture to setup our environment, and then assert that
-      // things went well
-      const { hardhatToken, owner } = await loadFixture(deployTokenFixture);
+  return { Counter, hardhatCounter, owner, otherAddr };
+  };
 
-      // `expect` receives a value and wraps it in an assertion object. These
-      // objects have a lot of utility methods to assert values.
+describe('Deployment', function () {
+  it('Should set the right owner', async function () {
+    const { hardhatCounter, owner } = await loadFixture(deployCounterFixture);
+    expect(await hardhatCounter.owner()).to.equal(owner.address);
+  })
 
-      // This test expects the owner variable stored in the contract to be
-      // equal to our Signer's owner.
-      expect(await hardhatToken.owner()).to.equal(owner.address);
-    });
+  it('Should set the right initial values of the variables', async function () {
+    const { hardhatCounter } = await loadFixture(deployCounterFixture);
+    expect(await hardhatCounter.value()).to.equal(0);
+    expect(await hardhatCounter.times()).to.equal(0);
+  })
+});
 
-    it("Should assign the total supply of tokens to the owner", async function () {
-      const { hardhatToken, owner } = await loadFixture(deployTokenFixture);
-      const ownerBalance = await hardhatToken.balanceOf(owner.address);
-      expect(await hardhatToken.totalSupply()).to.equal(ownerBalance);
-    });
-  });
+describe('Contract logic', function () {
+      it('Should increase the owner counter value', async function() {
+          const { hardhatCounter, owner } = await loadFixture(deployCounterFixture);
 
-  describe("Transactions", function () {
-    it("Should transfer tokens between accounts", async function () {
-      const { hardhatToken, owner, addr1, addr2 } = await loadFixture(
-        deployTokenFixture
-      );
-      // Transfer 50 tokens from owner to addr1
-      await expect(
-        hardhatToken.transfer(addr1.address, 50)
-      ).to.changeTokenBalances(hardhatToken, [owner, addr1], [-50, 50]);
+          await hardhatCounter.increment(50, {from:owner});  
+          expect(await hardhatCounter.value()).to.equal(50);
+          expect(await hardhatCounter.time()).to.equal(1);
 
-      // Transfer 50 tokens from addr1 to addr2
-      // We use .connect(signer) to send a transaction from another account
-      await expect(
-        hardhatToken.connect(addr1).transfer(addr2.address, 50)
-      ).to.changeTokenBalances(hardhatToken, [addr1, addr2], [-50, 50]);
-    });
+          await hardhatCounter.increment(50);
+          expect(await hardhatCounter.value()).to.equal(100);
+          expect(await hardhatCounter.time()).to.equal(2);
 
-    it("should emit Transfer events", async function () {
-      const { hardhatToken, owner, addr1, addr2 } = await loadFixture(
-        deployTokenFixture
-      );
+          await hardhatCounter.increment(-20);
+          expect(await hardhatCounter.value()).to.equal(80);
+          expect(await hardhatCounter.time()).to.equal(3);
+      })
 
-      // Transfer 50 tokens from owner to addr1
-      await expect(hardhatToken.transfer(addr1.address, 50))
-        .to.emit(hardhatToken, "Transfer")
-        .withArgs(owner.address, addr1.address, 50);
+      it('Should revert if not owner try to increase counter value'), async function() {
+          const { hardhatCounter, otherAddr } = await loadFixture(deployCounterFixture);
+          await expect(hardhatCounter.increment(50, {from:otherAddr}).to.be.revertedWith('Only owner'));
+      }
+  })
 
-      // Transfer 50 tokens from addr1 to addr2
-      // We use .connect(signer) to send a transaction from another account
-      await expect(hardhatToken.connect(addr1).transfer(addr2.address, 50))
-        .to.emit(hardhatToken, "Transfer")
-        .withArgs(addr1.address, addr2.address, 50);
-    });
-
-    it("Should fail if sender doesn't have enough tokens", async function () {
-      const { hardhatToken, owner, addr1 } = await loadFixture(
-        deployTokenFixture
-      );
-      const initialOwnerBalance = await hardhatToken.balanceOf(owner.address);
-
-      // Try to send 1 token from addr1 (0 tokens) to owner (1000 tokens).
-      // `require` will evaluate false and revert the transaction.
-      await expect(
-        hardhatToken.connect(addr1).transfer(owner.address, 1)
-      ).to.be.revertedWith("Not enough tokens");
-
-      // Owner balance shouldn't have changed.
-      expect(await hardhatToken.balanceOf(owner.address)).to.equal(
-        initialOwnerBalance
-      );
-    });
-  });
 });

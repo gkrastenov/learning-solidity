@@ -1,0 +1,40 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\georgi.krastenov\\Desktop\\solidity\\learning-solidity\\Test-Contracts\\02. Test\\contracts\\MyFirstContract.sol": {
+      "lastModificationDate": 1659023824433,
+      "contentHash": "5c5c8f85dbb673599563e32f8e0a0ba3",
+      "sourceName": "contracts/MyFirstContract.sol",
+      "solcConfig": {
+        "version": "0.8.9",
+        "settings": {
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "=0.8.9"
+      ],
+      "artifacts": [
+        "MyFirstContract"
+      ]
+    }
+  }
+}
